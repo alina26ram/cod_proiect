@@ -1,0 +1,123 @@
+import numpy as np
+
+
+class Photogrammes:
+    def __init__(self, s_photo, f_len, photo_format, init_transv_cov, init_long_cov, length, width, s_map):
+        self.s_photo = s_photo
+        self.f_len = f_len
+        self.photo_format = photo_format
+        self.init_transv_cov = init_transv_cov
+        self.init_long_cov = init_long_cov
+        self.length = length
+        self.width = width
+        self.s_map = s_map
+
+    def __str__(self):
+        return "s_photo:{0}, f_len:{1},f_len:{2}, photo_format:{3}, init_transv_cov:{4}, init_long_cov:{5}, length:{6}, width:{7}, s_map:{8}".format(
+            self.s_photo, self.f_len, self.photo_format, self.init_transv_cov, self.init_long_cov, self.length,
+            self.width, self.s_map)
+
+
+def Read_Elements(fn):
+    file = open(fn)
+    lines = file.readlines()
+    count = 0
+    f = 0
+    photos = []
+    for line in lines:
+        info = line.split(" ")
+        s_photo = info[0]
+        f_len = float(info[1])
+        photo_format = float(info[2])
+        init_transv_cov = float(info[3])
+        init_long_cov = float(info[4])
+        length = float(info[5])
+        width = float(info[6])
+        s_map = float(info[7])
+        ph = Photogrammes(s_photo, f_len, photo_format, init_transv_cov, init_long_cov, length, width, s_map)
+        photos.append(ph)
+        print(info)
+    file.close()
+    return (f, photos)
+
+
+def Ground_Dim(s_photo, photo_format):  # dimensiunea la sol a fotogramei
+    s_photo = Photogrammes.s_photo
+    photo_format = Photogrammes.photo_format
+    return s_photo * photo_format * 10 ** (-2)
+
+
+def Init_Bands_Dist():  # distanta initiala intre benzi
+    G = Ground_Dim(s_photo, photo_format)
+    return G * (1 - init_transv_cov / 100)
+
+
+def dist_NLim():  # calculul lui d
+    G = Ground_Dim(s_photo, photo_format)
+    return 0.2 * G
+
+
+def Spaces_Num():  # numarul de spatii intre benzi
+    W = Init_Bands_Dist()
+    G = Ground_Dim(s_photo, photo_format)
+    d = 0.2 * G
+    return (Photogrammes.width - 2 * d) / W
+
+
+def Number_of_Bands():  # numarul de benzi
+    Sp_Num = Spaces_Num()
+    return Sp_Num + 1
+
+
+def Final_Transv_Cov():  # calculul acoperirii transversale
+    G = Ground_Dim(s_photo, photo_format)
+    Sp_Num = Spaces_Num()
+    return 2 * (0.5 - Photogrammes.init_transv_cov / 100) * G + Sp_Num * (1 - Photogrammes.init_transv_cov / 100)
+
+
+def Final_band_dist():  # distanta intre benzi finala
+    G = Ground_Dim(s_photo, photo_format)
+    Ay = Final_Transv_Cov()
+    return (1 - Ay) * G
+
+
+def Photo_Base():  # baza de fotografiere
+    G = Ground_Dim(s_photo, photo_format)
+    return 0.4 * G
+
+
+def Long_Cov():
+    G = Ground_Dim(s_photo, photo_format)
+    B = Photo_Base()
+    return (G - B) * 100 / G
+
+
+def Photo_Num():  # numarul de fotograme pe banda
+    B = Photo_Base()
+    return Photogrammes.length / B + 1 + 2 + 2
+
+
+def Photo_Total():  # numarul total de fotograme
+    Ph_Num = Photo_Num()
+    Band_Num = Number_of_Bands()
+    return Ph_Num * Band_Num
+
+
+def Show_Results():  # crearea unui fisier .txt pentru a-mi afisa rezultatele
+    G = Ground_Dim(s_photo, photo_format)
+    Band_Num = Number_of_Bands()
+    Ay = Final_Transv_Cov()
+    Ax = Long_Cov()
+    Wa = Final_band_dist()
+    Ph_Num = Photo_Num()
+    Total_Photos = Photo_Total()
+    g = open('results.txt', 'a')
+    g.write('Dimensiunea acoperita de o fotograma este', G)
+    g.close()
+    pass
+
+
+### ???sa fac cu matplotlib zona si benzile la scara hartii???
+### o clasa pentru rezultatele fiecarei zone pe care o introduc intr-un fisier
+
+f = Read_Elements(r"C:\Users\Lenovo\PycharmProjects\cod_lab\test cod proiect.txt")
